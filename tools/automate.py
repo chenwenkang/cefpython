@@ -925,7 +925,7 @@ def getenv():
     if Options.x86:
         env["GYP_DEFINES"] += " host_arch=x86_64 target_arch=ia32"
     if Options.arm:
-        env["GYP_CROSSCOMPILE"] = 1
+        env["GYP_CROSSCOMPILE"] = "1"
         env["GYP_DEFINES"] += " host_arch=x86_64 target_arch=arm"
         env["GN_DEFINES"] += " arm_float_abi=hard use_cups=0"
     if Options.release_build and not Options.fast_build:
