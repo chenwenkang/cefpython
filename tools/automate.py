@@ -26,6 +26,7 @@ cefpython/build/cef55_3.2883.1553.g80bd606_win32/ .
 Usage:
     automate.py (--prebuilt-cef | --build-cef | --make-distrib)
                 [--x86 X86]
+                [--arm ARM]
                 [--fast-build FAST_BUILD]
                 [--force-chromium-update FORCE_CHROMIUM_UPDATE]
                 [--no-cef-update NO_CEF_UPDATE]
@@ -46,6 +47,7 @@ Options:
                              cefpython patches applied.
     --make-distrib           Re-make CEF distribution (cef/binary_distrib/)
                              after CEF was already built.
+    --arm                    Build for arm on 64-bit system
     --x86                    Build (or make distrib) for 32-bit CEF on
                              64-bit system.
     --fast-build             Fast build with is_official_build=False
@@ -101,6 +103,7 @@ class Options(object):
     build_cef = False
     make_distrib = False
     x86 = False
+    arm = False
     fast_build = False
     force_chromium_update = False
     no_cef_update = False
@@ -921,6 +924,10 @@ def getenv():
     env["GYP_DEFINES"] = "disable_nacl=1 use_sysroot=1 use_allocator=none"
     if Options.x86:
         env["GYP_DEFINES"] += " host_arch=x86_64 target_arch=ia32"
+    if Options.arm:
+        env["GYP_CROSSCOMPILE"] = 1
+        env["GYP_DEFINES"] += " host_arch=x86_64 target_arch=arm"
+        env["GN_DEFINES"] += " arm_float_abi=hard use_cups=0"
     if Options.release_build and not Options.fast_build:
         env["GYP_DEFINES"] += " buildtype=Official"
 
@@ -970,8 +977,10 @@ def run_automate_git():
         ninja -v -j2 -Cout\Release cefclient
     """
     args = []
-    if ARCH64 and not Options.x86:
+    if ARCH64 and not (Options.x86 or Options.arm):
         args.append("--x64-build")
+    if Options.arm:
+        args.append("--arm-build")
     args.append("--download-dir=" + Options.cef_build_dir)
     args.append("--branch=" + Options.cef_branch)
     if Options.no_depot_tools_update:
@@ -981,7 +990,7 @@ def run_automate_git():
     args.append("--verbose-build")
     # --force-build sets --force-distrib by default
     # ninja will only recompile files that changed
-    args.append("--force-build")
+    args.append("--force-build")    
     # We clone cef repository ourselves and update cef patches with ours,
     # so don't fetch/update CEF repo.
     args.append("--no-cef-update")
@@ -1018,6 +1027,8 @@ def run_make_distrib():
     args.append("--ninja-build")
     if ARCH64 and not Options.x86:
         args.append("--x64-build")
+    if Options.arm:
+        args.append("--arm-build")
     args.append("--no-archive")
     args = " ".join(args)
     command = "{script} {args}".format(script=script, args=args)
@@ -1077,7 +1088,7 @@ def get_prebuilt_name(header_file=""):
     else:
         version = get_cefpython_version()
     postfix2 = OS_POSTFIX2
-    if Options.x86:
+    if Options.x86 and not Options.arm:
         postfix2 = get_os_postfix2_for_arch("32bit")
     name = "cef%s_%s_%s" % (
         version["CHROME_VERSION_MAJOR"],
